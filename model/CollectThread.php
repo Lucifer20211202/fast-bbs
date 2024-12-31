@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: yun
- * Date: 2019-01-26
- * Time: 11:08
- */
 
 namespace addons\bbs\model;
 

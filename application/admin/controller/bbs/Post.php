@@ -31,9 +31,9 @@ class Post extends Backend
      */
     protected $searchFields = 'id,brief';
 
-    public function _initialize()
+    protected function initialize()
     {
-        parent::_initialize();
+        parent::initialize();
         $this->model = new \app\admin\model\bbs\Post;
 
     }
@@ -44,33 +44,35 @@ class Post extends Backend
     public function index()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             //如果发送的来源是Selectpage，则转发到Selectpage
-            if ($this->request->request('keyField')) {
+            if (request()->request('keyField')) {
                 return $this->selectpage();
             }
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
             $total = $this->model->alias($name)->with([
-                'forum' => function ($query) {
+                'forum'  => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
                 },
                 'thread' => function ($query) {
                     return $query->withField('id,subject,createtime,updatetime');
-                }, 'user'])->where($where)->order($sort, $order)
+                }, 'user'
+            ])->where($where)->order($sort, $order)
                 ->count();
             $list = $this->model->alias($name)->with([
-                'forum' => function ($query) {
+                'forum'  => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
                 },
                 'thread' => function ($query) {
                     return $query->withField('id,title,createtime,updatetime');
-                }, 'user'])->where($where)->order($sort, $order)
+                }, 'user'
+            ])->where($where)->order($sort, $order)
                 ->limit($offset, $limit)
                 ->select();
             $list = collection($list)->toArray();
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
             return json($result);
         }
         return $this->view->fetch();
@@ -79,7 +81,7 @@ class Post extends Backend
     /**
      * 编辑
      */
-    public function edit($ids = null)
+    public function edit()
     {
         return false;
     }
@@ -87,11 +89,13 @@ class Post extends Backend
     /**
      * 详情
      */
-    public function detail($ids = null)
+    public function detail()
     {
+        $ids = request()->param('ids');
         $row = $this->model->withTrashed()->find($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $this->view->assign("row", $row);
         return $this->fetch();
     }
@@ -99,8 +103,9 @@ class Post extends Backend
     /**
      * 删除
      */
-    public function del($ids = "")
+    public function del()
     {
+        $ids = request()->param('ids');
         if ($ids) {
             $pk = $this->model->getPk();
             $adminIds = $this->getDataLimitAdminIds();
@@ -128,10 +133,10 @@ class Post extends Backend
     public function recyclebin()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
             $total = $this->model
                 ->onlyTrashed()->alias($name)
                 ->where($where)
@@ -145,7 +150,7 @@ class Post extends Backend
                 ->limit($offset, $limit)
                 ->select();
 
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
 
             return json($result);
         }
@@ -155,8 +160,9 @@ class Post extends Backend
     /**
      * 还原
      */
-    public function restore($ids = "")
+    public function restore()
     {
+        $ids = request()->param('ids');
         $pk = $this->model->getPk();
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
@@ -180,7 +186,7 @@ class Post extends Backend
                 $this->error($e->getMessage());
             }
         } else {
-            $count = $this->model->whereNull($this->model->getDeleteTimeField())->update([$this->model->getDeleteTimeField() => NULL]);
+            $count = $this->model->whereNull($this->model->getDeleteTimeField())->update([$this->model->getDeleteTimeField() => null]);
         }
         if ($count) {
             $this->success();
@@ -192,8 +198,9 @@ class Post extends Backend
     /**
      * 真实删除
      */
-    public function destroy($ids = "")
+    public function destroy()
     {
+        $ids = request()->param('ids');
         return $this->error('禁止删除');
 //        $pk = $this->model->getPk();
 //        $adminIds = $this->getDataLimitAdminIds();

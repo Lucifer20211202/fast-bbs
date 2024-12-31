@@ -22,9 +22,9 @@ class Post extends Backend
      */
     protected $model = null;
 
-    public function _initialize()
+    protected function initialize()
     {
-        parent::_initialize();
+        parent::initialize();
         $this->model = new \app\admin\model\bbs\Report;
         $this->view->assign("typeList", $this->model->getTypeList());
         $this->view->assign("statusList", $this->model->getStatusList());
@@ -49,34 +49,36 @@ class Post extends Backend
     public function index()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             $this->model = new \app\admin\model\bbs\Post();
             //如果发送的来源是Selectpage，则转发到Selectpage
-            if ($this->request->request('keyField')) {
+            if (request()->request('keyField')) {
                 return $this->selectpage();
             }
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
             $total = $this->model->alias($name)->with([
-                'forum' => function ($query) {
+                'forum'  => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
                 },
                 'thread' => function ($query) {
                     return $query->withField('id,title,createtime,updatetime');
-                }, 'user'])->where($where)->where($name.'.report_number','>',0)->order($name.'.report_number', 'DESC')
+                }, 'user'
+            ])->where($where)->where($name.'.report_number', '>', 0)->order($name.'.report_number', 'DESC')
                 ->count();
             $list = $this->model->alias($name)->with([
-                'forum' => function ($query) {
+                'forum'  => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
                 },
                 'thread' => function ($query) {
                     return $query->withField('id,title,createtime,updatetime');
-                }, 'user'])->where($where)->where($name.'.report_number','>',0)->order($name.'.report_number', 'DESC')
+                }, 'user'
+            ])->where($where)->where($name.'.report_number', '>', 0)->order($name.'.report_number', 'DESC')
                 ->limit($offset, $limit)
                 ->select();
             $list = collection($list)->toArray();
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
             return json($result);
         }
         return $this->view->fetch();
@@ -85,29 +87,30 @@ class Post extends Backend
     /**
      * 编辑
      */
-    public function edit($ids = null)
+    public function edit()
     {
         return false;
     }
 
     /**
      * 帖子详情
-     * @param $ids
      * @return mixed
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function detail($ids){
+    public function detail()
+    {
+        $ids = request()->param('ids');
         $m_post = new \app\admin\model\bbs\Post();
         $info = $m_post::withTrashed()->find($ids);
-        if(!$info){
+        if (!$info) {
             $this->error('错误的数据');
         }
-        if($info->report_number == 0){
+        if ($info->report_number == 0) {
             $this->error('该信息未被举报过');
         }
-        $this->assign('info',$info);
+        $this->assign('info', $info);
         return $this->fetch();
     }
 
@@ -120,36 +123,37 @@ class Post extends Backend
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function reports(){
+    public function reports()
+    {
         $type = 2;
-        $value_id = input('param.ids/d',0);
-        if(!$value_id){
+        $value_id = request()->param('ids', 0);
+        if (!$value_id) {
             $this->error('错误的参数');
         }
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             //如果发送的来源是Selectpage，则转发到Selectpage
-            if ($this->request->request('keyField')) {
+            if (request()->request('keyField')) {
                 return $this->selectpage();
             }
             $this->relationSearch = true;
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
-            $total = $this->model->alias($name)->with(['user','valueuser'])->where([$name.'.type'=>$type,$name.'.value_id'=>$value_id])->where($where)->count();
-            $list = $this->model->alias($name)->with(['user','valueuser'])
-                ->where([$name.'.type'=>$type,$name.'.value_id'=>$value_id])->where($where)->order($sort, $order)
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $total = $this->model->alias($name)->with(['user', 'valueuser'])->where([$name.'.type'     => $type,
+                                                                                     $name.'.value_id' => $value_id
+            ])->where($where)->count();
+            $list = $this->model->alias($name)->with(['user', 'valueuser'])
+                ->where([$name.'.type' => $type, $name.'.value_id' => $value_id])->where($where)->order($sort, $order)
                 ->limit($offset, $limit)
                 ->select();
             $list = collection($list)->toArray();
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
             return json($result);
         }
-        $this->assignconfig('index_url',url('/admin/bbs/report/post/reports',['ids'=>$value_id]));
+        $this->assignconfig('index_url', url('/admin/bbs/report/post/reports', ['ids' => $value_id]));
         return $this->fetch();
     }
-
-
 
     /**
      * 删除举报的帖子
@@ -157,16 +161,18 @@ class Post extends Backend
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function del($ids=''){
-        if(!$ids){
+    public function del()
+    {
+        $ids = request()->param('ids');
+        if (!$ids) {
             $this->error('错误的参数');
         }
         $m_post = new \app\admin\model\bbs\Post();
         $post = $m_post->find($ids);
-        if(!$post){
+        if (!$post) {
             $this->error('此回复已被删除');
         }
-        if($post->delete()){
+        if ($post->delete()) {
             $this->success('删除成功');
         }
         $this->error('操作失败,请稍后再试');
@@ -174,25 +180,25 @@ class Post extends Backend
 
     /**
      * 设置举报忽略状态（帖子）
-     * @param $ids
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function ignore($ids){
-        $ids = $ids ? $ids : $this->request->param("ids");
+    public function ignore()
+    {
+        $ids = request()->param('ids');
         if ($ids) {
             $pk = $this->model->getPk();
             $adminIds = $this->getDataLimitAdminIds();
             if (is_array($adminIds)) {
                 $this->model->where($this->dataLimitField, 'in', $adminIds);
             }
-            $list = $this->model->where('type',2)->where($pk, 'in', $ids)->select();
+            $list = $this->model->where('type', 2)->where($pk, 'in', $ids)->select();
             $count = 0;
             Db::startTrans();
             try {
                 foreach ($list as $k => $v) {
-                    $count += $v->save(['status'=>$this->request->param('status',0)]);
+                    $count += $v->save(['status' => request()->param('status', 0)]);
                 }
                 Db::commit();
             } catch (PDOException $e) {

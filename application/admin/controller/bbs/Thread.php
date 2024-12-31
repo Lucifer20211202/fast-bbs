@@ -24,9 +24,9 @@ class Thread extends Backend
      */
     protected $relationSearch = true;
 
-    public function _initialize()
+    protected function initialize()
     {
-        parent::_initialize();
+        parent::initialize();
         $this->model = new \app\admin\model\bbs\Thread;
         $this->view->assign("isEliteList", $this->model->getIsEliteList());
         $this->view->assign("statusList", $this->model->getStatusList());
@@ -49,40 +49,42 @@ class Thread extends Backend
     public function index()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             //如果发送的来源是Selectpage，则转发到Selectpage
-            if ($this->request->request('keyField')) {
+            if (request()->request('keyField')) {
                 return $this->selectpage();
             }
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
 //            $order1['all_top'] = 'DESC';
-//            $filter = $this->request->get("filter", '');
+//            $filter = request()->get("filter", '');
 //            $filter = (array)json_decode($filter, TRUE);
 //            if (isset($filter['forum_id'])) {
 //                $order1['top'] = 'DESC';
 //            }
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
             $total = $this->model->alias($name)->with([
                 'forum' => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
-                }, 'user'])->where($where)->order($sort, $order)
+                }, 'user'
+            ])->where($where)->order($sort, $order)
                 ->count();
             $list = $this->model->alias($name)->with([
                 'forum' => function ($query) {
                     return $query->withField('id,name,createtime,updatetime');
                 },
-                'user'])->where($where)->order($sort, $order)
+                'user'
+            ])->where($where)->order($sort, $order)
                 ->limit($offset, $limit)
                 ->select();
             $list = collection($list)->toArray();
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
             return json($result);
         }
         return $this->view->fetch();
     }
 
-    public function edit($ids = null)
+    public function edit()
     {
         return false;
     }
@@ -90,29 +92,32 @@ class Thread extends Backend
     /**
      * 详情
      */
-    public function detail($ids = NULL)
+    public function detail()
     {
+        $ids = request()->param('ids');
         $row = $this->model->withTrashed()->find($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $this->view->assign("info", $row);
         return $this->view->fetch();
     }
 
     /**
      * 设置/取消全局置顶排序
-     * @param null $ids
      * @throws \think\exception\DbException
      */
-    public function set_all_top($ids = null)
+    public function set_all_top()
     {
-        $value = input('post.value/d', 0);
+        $ids = request()->param('ids');
+        $value = request()->param('value', 0);
         if ($value < 0) {
             $this->error('请输入大于0的数字');
         }
         $row = $this->model->get($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
@@ -126,18 +131,19 @@ class Thread extends Backend
 
     /**
      * 设置/取消板块置顶排序
-     * @param null $ids
      * @throws \think\exception\DbException
      */
-    public function set_top($ids = null)
+    public function set_top()
     {
-        $value = input('post.value/d', 0);
+        $ids = request()->param('ids');
+        $value = request()->param('value', 0);
         if ($value < 0) {
             $this->error('请输入大于0的数字');
         }
         $row = $this->model->get($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
@@ -151,14 +157,15 @@ class Thread extends Backend
 
     /**
      * 设为精华
-     * @param $ids
      * @throws \think\exception\DbException
      */
-    public function set_elite($ids)
+    public function set_elite()
     {
+        $ids = request()->param('ids');
         $row = $this->model->get($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
@@ -173,14 +180,15 @@ class Thread extends Backend
 
     /**
      * 取消精华
-     * @param $ids
      * @throws \think\exception\DbException
      */
-    public function del_elite($ids)
+    public function del_elite()
     {
+        $ids = request()->param('ids');
         $row = $this->model->get($ids);
-        if (!$row)
+        if (!$row) {
             $this->error(__('No Results were found'));
+        }
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
             if (!in_array($row[$this->dataLimitField], $adminIds)) {
@@ -196,8 +204,9 @@ class Thread extends Backend
     /**
      * 删除
      */
-    public function del($ids = "")
+    public function del()
     {
+        $ids = request()->param('ids');
         if ($ids) {
             $pk = $this->model->getPk();
             $adminIds = $this->getDataLimitAdminIds();
@@ -224,10 +233,10 @@ class Thread extends Backend
     public function recyclebin()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags']);
+        if (request()->isAjax()) {
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
-            $name = \think\Loader::parseName(basename(str_replace('\\', '/', get_class($this->model))));
+            $name = parseName(basename(str_replace('\\', '/', get_class($this->model))));
             $total = $this->model
                 ->onlyTrashed()->alias($name)
                 ->where($where)
@@ -241,7 +250,7 @@ class Thread extends Backend
                 ->limit($offset, $limit)
                 ->select();
 
-            $result = array("total" => $total, "rows" => $list);
+            $result = ["total" => $total, "rows" => $list];
 
             return json($result);
         }
@@ -251,8 +260,9 @@ class Thread extends Backend
     /**
      * 还原
      */
-    public function restore($ids = "")
+    public function restore()
     {
+        $ids = request()->param('ids');
         $pk = $this->model->getPk();
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {
@@ -277,8 +287,9 @@ class Thread extends Backend
     /**
      * 真实删除
      */
-    public function destroy($ids = "")
+    public function destroy()
     {
+        $ids = request()->param('ids');
         $pk = $this->model->getPk();
         $adminIds = $this->getDataLimitAdminIds();
         if (is_array($adminIds)) {

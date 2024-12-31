@@ -22,7 +22,7 @@ use think\Request;
 class Thread extends Base
 {
 
-    protected $noNeedLogin = ['index','info','commentList'];
+    protected $noNeedLogin = ['index', 'info', 'commentList'];
 
     public function _initialize()
     {
@@ -30,7 +30,8 @@ class Thread extends Base
         $this->validate = new \addons\bbs\validate\Thread;
     }
 
-    public function index(){
+    public function index()
+    {
         return $this->fetch();
     }
 
@@ -41,55 +42,59 @@ class Thread extends Base
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function info(){
-        $id = input('get.id/d',0);
-        if(!$id){
+    public function info()
+    {
+        $id = request()->param('id', 0);
+        if (!$id) {
             return $this->error('缺少必要参数');
         }
         $info = \addons\bbs\model\Thread::find($id);
-        if(!$info || !$info->forum){
-            return $this->error('信息不存在或已被删除',addon_url('bbs/index/index'));
+        if (!$info || !$info->forum) {
+            return $this->error('信息不存在或已被删除', addon_url('bbs/index/index'));
         }
-        $post_id = input('get.post_id/d',0);
-        if($post_id){
+        $post_id = request()->param('post_id', 0);
+        if ($post_id) {
             $post = Post::get($post_id);
-            if($post && $post->thread_id == $id){
-                if($post->parent_id > 0){
-                    $this->assign('post_first_id',$post->first_id);
-                    $post_count = Post::where('thread_id',$id)->where('first_id',0)->where('id','<=',$post->first_id)->order('id', 'ASC')->count();
-                    $comment_page = ceil($post_count/self::LIST_ROWS['thread_comment']);
-                    $this->assign('comment_page',$comment_page);
-                    $post_count = Post::where('first_id',$post->first_id)->where('id','<=',$post->id)->order('id', 'ASC')->count();
-                    $post_comment_page = ceil($post_count/self::LIST_ROWS['post_comment']);
-                    $this->assign('comment_post_page',$post_comment_page);
-                }else{
-                    $post_count = Post::where('thread_id',$id)->where('first_id',0)->where('id','<=',$post->id)->order('id', 'ASC')->count();
-                    $comment_page = ceil($post_count/self::LIST_ROWS['thread_comment']);
-                    $this->assign('comment_page',$comment_page);
+            if ($post && $post->thread_id == $id) {
+                if ($post->parent_id > 0) {
+                    $this->assign('post_first_id', $post->first_id);
+                    $post_count = Post::where('thread_id', $id)->where('first_id', 0)->where('id', '<=',
+                        $post->first_id)->order('id', 'ASC')->count();
+                    $comment_page = ceil($post_count / self::LIST_ROWS['thread_comment']);
+                    $this->assign('comment_page', $comment_page);
+                    $post_count = Post::where('first_id', $post->first_id)->where('id', '<=', $post->id)->order('id',
+                        'ASC')->count();
+                    $post_comment_page = ceil($post_count / self::LIST_ROWS['post_comment']);
+                    $this->assign('comment_post_page', $post_comment_page);
+                } else {
+                    $post_count = Post::where('thread_id', $id)->where('first_id', 0)->where('id', '<=',
+                        $post->id)->order('id', 'ASC')->count();
+                    $comment_page = ceil($post_count / self::LIST_ROWS['thread_comment']);
+                    $this->assign('comment_page', $comment_page);
                 }
             }
 
         }
         $auth = [
             'is_author' => 0,
-            'is_admin' => 0,
+            'is_admin'  => 0,
         ];
         $view_key = session_id().'_'.$id;
-        if(!Cache::get($view_key.'_'.$id)){
-            $info->view_number = $info->view_number+1;
+        if (!Cache::get($view_key.'_'.$id)) {
+            $info->view_number = $info->view_number + 1;
             $info->save();
         }
-        Cache::tag('view_thread')->set($view_key,'1',60*5);
-        if($this->auth->isLogin()){
-            if($this->auth->getUser()['id'] == $info->user_id){
+        Cache::tag('view_thread')->set($view_key, '1', 60 * 5);
+        if ($this->auth->isLogin()) {
+            if ($this->auth->getUser()['id'] == $info->user_id) {
                 $auth['is_author'] = 1;
             }
             $forum = Forum::findOrFail($info->forum_id);
-            if(in_array($this->auth->getUser()['id'],explode(',',$forum->mod_user_ids))){
+            if (in_array($this->auth->getUser()['id'], explode(',', $forum->mod_user_ids))) {
                 $auth['is_admin'] = 1;
             }
         }
-        return $this->fetch('',['info'=>$info,'auth'=>$auth,'post_id'=>$post_id]);
+        return $this->fetch('', ['info' => $info, 'auth' => $auth, 'post_id' => $post_id]);
     }
 
     /**
@@ -97,26 +102,27 @@ class Thread extends Base
      * @return mixed|void
      * @throws \think\exception\DbException
      */
-    public function add(){
-        if(!$this->auth->mobile){
+    public function add()
+    {
+        if (!$this->auth->mobile) {
             return $this->error('绑定手机号后才可发帖');
         }
-        if($this->request->isPost()){
-            $data['forum_id'] = input('post.forum_id/d', 0);
-            $data['title'] = input('post.title', '', 'trim,htmlspecialchars');
-            $data['content_html'] = input('post.content', '', 'trim');
+        if (request()->isPost()) {
+            $data['forum_id'] = request()->param('forum_id', 0);
+            $data['title'] = request()->param('title', '', 'trim,htmlspecialchars');
+            $data['content_html'] = request()->param('content', '', 'trim');
             if (!$this->validate->scene('create')->check($data)) {
                 return $this->error($this->validate->getError());
             }
             $user_id = $this->auth->getUser()['id'];
             $m_forum = new Forum;
             $forum = $m_forum->get($data['forum_id']);
-            if (!$forum || $forum->status !=1) {
+            if (!$forum || $forum->status != 1) {
                 return $this->error('错误的板块');
             }
-            switch ($forum->thread_status){
+            switch ($forum->thread_status) {
                 case 1:
-                    if(!in_array($user_id,$forum->mod_user_id_arr)){
+                    if (!in_array($user_id, $forum->mod_user_id_arr)) {
                         return $this->error('当前板块只有版主可发布信息');
                     }
                     break;
@@ -128,16 +134,16 @@ class Thread extends Base
             $forum->save();
             $m_thread = new \addons\bbs\model\Thread;
             $m_thread->data([
-                'forum_id' => $data['forum_id'],
-                'title' => $data['title'],
-                'user_id' => $user_id,
-                'brief' => mb_substr(strip_tags($data['content_html']), 0, 80).'...',
-                'last_time' => 0 ,
-                'user_ip' => $this->request->ip(),
-                'content_html'=>$data['content_html'],
-                'content_fmt'=>Common::purify_html($data['content_html']),
+                'forum_id'     => $data['forum_id'],
+                'title'        => $data['title'],
+                'user_id'      => $user_id,
+                'brief'        => mb_substr(strip_tags($data['content_html']), 0, 80).'...',
+                'last_time'    => 0,
+                'user_ip'      => request()->ip(),
+                'content_html' => $data['content_html'],
+                'content_fmt'  => Common::purify_html($data['content_html']),
             ])->save();
-            return $this->success('发布成功',addon_url('bbs/index/index'));
+            return $this->success('发布成功', addon_url('bbs/index/index'));
         }
         return $this->fetch();
     }
@@ -146,31 +152,32 @@ class Thread extends Base
      * 修改主题
      * @return Thread|void
      */
-    public function edit(){
-        $id = input('param.id/d',0);
-        if(!$id){
+    public function edit()
+    {
+        $id = request()->param('id', 0);
+        if (!$id) {
             return $this->error('无此信息');
         }
         $m_thread = new \addons\bbs\model\Thread;
         $info = $m_thread->withTrashed()->find($id);
-        if(!$info || $info->user_id != $this->auth->id){
+        if (!$info || $info->user_id != $this->auth->id) {
             return $this->error('只有作者可以修改');
         }
-        if($this->request->isPost()) {
-            $data['content_html'] = input('post.content', '', 'trim');
+        if (request()->isPost()) {
+            $data['content_html'] = request()->param('content', '', 'trim');
             $data['forum_id'] = $info->forum_id;
-            $data['title'] = input('post.title', '', 'trim');
+            $data['title'] = request()->param('title', '', 'trim');
             if (!$this->validate->scene('create')->check($data)) {
                 return $this->error($this->validate->getError());
             }
             $info->title = $data['title'];
-            $info->content_html =$data['content_html'];
+            $info->content_html = $data['content_html'];
             $info->content_fmt = Common::purify_html($data['content_html']);
             $info->brief = mb_substr(strip_tags($data['content_html']), 0, 80).'...';
             $info->save();
-            return $this->success('修改成功',addon_url('/bbs/thread/info',['id'=>$id]));
+            return $this->success('修改成功', addon_url('/bbs/thread/info', ['id' => $id]));
         }
-        $this->assign('info',$info);
+        $this->assign('info', $info);
         return $this->fetch();
     }
 
@@ -180,19 +187,19 @@ class Thread extends Base
      */
     public function comment()
     {
-        if(!$this->auth->mobile){
+        if (!$this->auth->mobile) {
             return $this->error('绑定手机号后才可回复');
         }
-        if(\request()->isPost()){
-            $id = input('id', 0);
+        if (\request()->isPost()) {
+            $id = request()->param('id', 0);
             $m_thread = new \addons\bbs\model\Thread();
-            if(!$id || !$thread = $m_thread->get($id)){
+            if (!$id || !$thread = $m_thread->get($id)) {
                 return $this->error('错误的参数');
             }
             if ($thread->status == 1) {
                 return $this->error('该主题禁止回复');
             }
-            $data['content_html'] = input('post.content', '', 'trim');
+            $data['content_html'] = request()->param('content', '', 'trim');
             if (empty($data['content_html'])) {
                 return $this->error('内容不能为空');
             }
@@ -200,24 +207,28 @@ class Thread extends Base
             $user_id = $this->auth->getUser()['id'];
             $data = [
                 'parent_floor' => 0,
-                'parent_id' => 0,
-                'id_path' => '0,',
-                'forum_id' => $thread->forum_id,
-                'thread_id' => $id,
-                'user_id' => $user_id,
-                'user_ip' => $this->request->ip(),
+                'parent_id'    => 0,
+                'id_path'      => '0,',
+                'forum_id'     => $thread->forum_id,
+                'thread_id'    => $id,
+                'user_id'      => $user_id,
+                'user_ip'      => request()->ip(),
                 'content_html' => $data['content_html'],
-                'content_fmt' => Common::purify_html($data['content_html']),
-                'brief' => mb_substr(strip_tags($data['content_html']), 0, 80),
+                'content_fmt'  => Common::purify_html($data['content_html']),
+                'brief'        => mb_substr(strip_tags($data['content_html']), 0, 80),
             ];
             $m_post = new Post();
             Db::startTrans();
-            $data['floor'] = $m_post->lock(true)->where('thread_id', $id)->where('parent_id',0)->order('id', 'desc')->value('floor') + 1;
+            $data['floor'] = $m_post->lock(true)->where('thread_id', $id)->where('parent_id', 0)->order('id',
+                    'desc')->value('floor') + 1;
             $m_post->data($data)->save();
             Db::commit();
             $m_thread = new \addons\bbs\model\Thread();
-            $m_thread->save(['post_number' => Db::raw('post_number + 1'),'last_time'=>time(),'last_user_id'=>$user_id,'last_post_id'=>$m_post->id], ['id' => $id]);
-            Forum::update(['post_number' => Db::raw('post_number + 1'), 'today_posts' => Db::raw('today_posts + 1')], ['id' => $thread->forum_id]);
+            $m_thread->save(['post_number'  => Db::raw('post_number + 1'), 'last_time' => time(),
+                             'last_user_id' => $user_id, 'last_post_id' => $m_post->id
+            ], ['id' => $id]);
+            Forum::update(['post_number' => Db::raw('post_number + 1'), 'today_posts' => Db::raw('today_posts + 1')],
+                ['id' => $thread->forum_id]);
             return $this->success('回复成功');
         }
         return $this->error('访问异常');
@@ -227,18 +238,19 @@ class Thread extends Base
      * 获取主题回复贴列表
      * @throws \think\exception\DbException
      */
-    public function commentList(){
-        if(!$this->request->isAjax()){
+    public function commentList()
+    {
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('id', 0);
-        $where = ['parent_id'=>0];
+        $id = request()->param('id', 0);
+        $where = ['parent_id' => 0];
         $where['thread_id'] = $id;
         $list = Post::withTrashed()->with('praise,collect')->where($where)->with([
             'user' => function ($query) {
                 return $query->withField('nickname,id,avatar,username');
             },
-        ])->order('id', 'ASC')->paginate(self::LIST_ROWS['thread_comment'],false)->appends('id',$id);
+        ])->order('id', 'ASC')->paginate(self::LIST_ROWS['thread_comment'], false)->appends('id', $id);
         foreach ($list as $value) {
             if ($value->trashed()) {
                 $value['content_html'] = $value['content_fmt'] = '<em>该楼层因违规已被删除</em>';
@@ -259,10 +271,10 @@ class Thread extends Base
      */
     public function close()
     {
-        if(!$this->request->isAjax()){
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         $m_thread = new  \addons\bbs\model\Thread;
         $thread = $m_thread->where('id', $id)->find();
         if (!$thread) {
@@ -270,7 +282,7 @@ class Thread extends Base
         }
         if ($thread->user_id != $this->auth->getUser()['id']) {
             $forum = Forum::findOrFail($thread->forum_id);
-            if(!in_array($this->auth->getUser()['id'],explode(',',$forum->mod_user_ids))){
+            if (!in_array($this->auth->getUser()['id'], explode(',', $forum->mod_user_ids))) {
                 return $this->error('您无权进行此操作');
             }
         }
@@ -284,9 +296,9 @@ class Thread extends Base
      */
     public function report()
     {
-        $data['value_id'] = input('post.id/d', 0);
+        $data['value_id'] = request()->param('id', 0);
         $data['type'] = 1;
-        $data['describe'] = input('post.describe', '', 'trim,htmlspecialchars');
+        $data['describe'] = request()->param('describe', '', 'trim,htmlspecialchars');
         foreach ($data as $value) {
             if (!$value) {
                 return $this->error('错误的参数');
@@ -303,13 +315,15 @@ class Thread extends Base
         $data['value_user_id'] = $info->user_id;
         $data['user_id'] = $this->auth->getUser()['id'];
         $m_report = new Report();
-        $report = $m_report->where(['type' => $data['type'], 'value_id' => $data['value_id'], 'value_user_id' => $data['value_user_id'], 'user_id' => $data['user_id']])->find();
+        $report = $m_report->where(['type'          => $data['type'], 'value_id' => $data['value_id'],
+                                    'value_user_id' => $data['value_user_id'], 'user_id' => $data['user_id']
+        ])->find();
         if ($report) {
             $report->describe = $data['describe'];
             $report->save();
         } else {
             $m_report->data($data)->save();
-            $info->save(['report_number'=>Db::raw('report_number + 1')]);
+            $info->save(['report_number' => Db::raw('report_number + 1')]);
         }
         return $this->success('举报成功');
     }
@@ -320,10 +334,10 @@ class Thread extends Base
      */
     public function praise()
     {
-        if(!$this->request->isAjax()){
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('param.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
@@ -334,12 +348,12 @@ class Thread extends Base
         $m_praise = new PraiseThread();
         if ($m_praise->where('user_id', $this->auth->getUser()['id'])->where('thread_id', $id)->lock(true)->count()) {
             Db::rollback();
-            return $this->success('您已经赞过了',null,$praise_number);
+            return $this->success('您已经赞过了', null, $praise_number);
         }
         $m_praise->data(['user_id' => $this->auth->getUser()['id'], 'thread_id' => $id])->save();
-        $thread->save(['praise_number'=>Db::raw('praise_number + 1')]);
+        $thread->save(['praise_number' => Db::raw('praise_number + 1')]);
         Db::commit();
-        return $this->success('点赞成功',null,$praise_number+1);
+        return $this->success('点赞成功', null, $praise_number + 1);
     }
 
     /**
@@ -347,10 +361,10 @@ class Thread extends Base
      */
     public function noPraise()
     {
-        if(!$this->request->isAjax()){
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
@@ -359,10 +373,10 @@ class Thread extends Base
         $thread = $m_thread->findOrFail($id);
         $praise_number = $thread->praise_number;
         if ($m_praise->where('user_id', $this->auth->getUser()['id'])->where('thread_id', $id)->delete()) {
-            $thread->save(['praise_number'=>Db::raw('praise_number - 1')]);
-            return $this->success('取消点赞成功',null,$praise_number-1);
+            $thread->save(['praise_number' => Db::raw('praise_number - 1')]);
+            return $this->success('取消点赞成功', null, $praise_number - 1);
         }
-        return $this->success('您还没有赞过',null,$praise_number);
+        return $this->success('您还没有赞过', null, $praise_number);
     }
 
     /**
@@ -371,10 +385,10 @@ class Thread extends Base
      */
     public function collect()
     {
-        if(!$this->request->isAjax()){
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
@@ -385,12 +399,12 @@ class Thread extends Base
         Db::startTrans();
         if ($m_collect->where('user_id', $this->auth->getUser()['id'])->where('thread_id', $id)->lock(true)->count()) {
             Db::rollback();
-            return $this->success('您已经收藏过了',$collect_number);
+            return $this->success('您已经收藏过了', $collect_number);
         }
         $m_collect->data(['user_id' => $this->auth->getUser()['id'], 'thread_id' => $id])->save();
-        $thread->save(['collect_number'=>Db::raw('collect_number + 1')]);
+        $thread->save(['collect_number' => Db::raw('collect_number + 1')]);
         Db::commit();
-        return $this->success('收藏成功',null,$collect_number+1);
+        return $this->success('收藏成功', null, $collect_number + 1);
     }
 
     /**
@@ -398,10 +412,10 @@ class Thread extends Base
      */
     public function noCollect()
     {
-        if(!$this->request->isAjax()){
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
@@ -410,10 +424,10 @@ class Thread extends Base
         $collect_number = $thread->collect_number;
         $m_collect = new CollectThread();
         if ($m_collect->where('user_id', $this->auth->getUser()['id'])->where('thread_id', $id)->delete()) {
-            $thread->save(['collect_number'=>Db::raw('collect_number - 1')]);
-            return $this->success('取消收藏成功',null,$collect_number-1);
+            $thread->save(['collect_number' => Db::raw('collect_number - 1')]);
+            return $this->success('取消收藏成功', null, $collect_number - 1);
         }
-        return $this->success('您还没有收藏过',null,$collect_number);
+        return $this->success('您还没有收藏过', null, $collect_number);
     }
 
     /**
@@ -422,24 +436,25 @@ class Thread extends Base
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function setElite(){
-        if(!$this->request->isAjax()){
+    public function setElite()
+    {
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
         $m_thread = new \addons\bbs\model\Thread();
         $thread = $m_thread->findOrFail($id);
         $forum = Forum::findOrFail($thread->forum_id);
-        if(!in_array($this->auth->getUser()['id'],explode(',',$forum->mod_user_ids))){
+        if (!in_array($this->auth->getUser()['id'], explode(',', $forum->mod_user_ids))) {
             return $this->error('您无权进行此操作');
         }
-        if($thread->setElite()){
-            return  $this->success('设为精华成功');
+        if ($thread->setElite()) {
+            return $this->success('设为精华成功');
         }
-        return  $this->error('操作失败');
+        return $this->error('操作失败');
     }
 
     /**
@@ -448,24 +463,25 @@ class Thread extends Base
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function delElite(){
-        if(!$this->request->isAjax()){
+    public function delElite()
+    {
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
         $m_thread = new \addons\bbs\model\Thread();
         $thread = $m_thread->findOrFail($id);
         $forum = Forum::findOrFail($thread->forum_id);
-        if(!in_array($this->auth->getUser()['id'],explode(',',$forum->mod_user_ids))){
+        if (!in_array($this->auth->getUser()['id'], explode(',', $forum->mod_user_ids))) {
             return $this->error('您无权进行此操作');
         }
-        if($thread->delElite()){
-            return  $this->success('取消精华成功');
+        if ($thread->delElite()) {
+            return $this->success('取消精华成功');
         }
-        return  $this->error('操作失败');
+        return $this->error('操作失败');
     }
 
     /**
@@ -474,23 +490,24 @@ class Thread extends Base
      * @throws \think\db\exception\ModelNotFoundException
      * @throws \think\exception\DbException
      */
-    public function setTop(){
-        if(!$this->request->isAjax()){
+    public function setTop()
+    {
+        if (!request()->isAjax()) {
             return $this->error('请求异常');
         }
-        $id = input('post.id/d', 0);
+        $id = request()->param('id', 0);
         if (!$id) {
             return $this->error('错误的参数');
         }
-        $top = input('post.top/d', 0);
+        $top = request()->param('top', 0);
         $m_thread = new \addons\bbs\model\Thread();
         $thread = $m_thread->findOrFail($id);
         $forum = Forum::findOrFail($thread->forum_id);
-        if(!in_array($this->auth->getUser()['id'],explode(',',$forum->mod_user_ids))){
+        if (!in_array($this->auth->getUser()['id'], explode(',', $forum->mod_user_ids))) {
             return $this->error('您无权进行此操作');
         }
         $thread->top = $top;
         $thread->save();
-        return  $this->success('操作成功');
+        return $this->success('操作成功');
     }
 }

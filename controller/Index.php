@@ -11,10 +11,10 @@ class Index extends Base
     public function index()
     {
         $m_thread = new \addons\bbs\model\Thread();
-        $id = input('id', 0);
-        $type = input('type', 1);
-        $sort_type = input('sort_type', 0);
-        $keywords = input('keywords/s','');
+        $id = request()->param('id', 0);
+        $type = request()->param('type', 1);
+        $sort_type = request()->param('sort_type', 0);
+        $keywords = request()->param('keywords', '');
         $where['all_top'] = 0;
         if ($type == 2) {
             $where['is_elite'] = 1;
@@ -25,36 +25,36 @@ class Index extends Base
             $where['forum_id'] = $id;
             $where['top'] = 0;
         }
-        if($keywords){
-            $where['title'] = ['LIKE','%'.$keywords.'%'];
+        if ($keywords) {
+            $where['title'] = ['LIKE', '%'.$keywords.'%'];
         }
-        if($sort_type == 1){
+        if ($sort_type == 1) {
             $order['last_time'] = 'DESC';
-        }else{
+        } else {
             $order['createtime'] = 'DESC';
 
         }
         $top_list = [];
         $all_top_list = $m_thread->where('all_top', '>', '0')->with([
-            'user' => function ($query) {
+            'user'  => function ($query) {
                 return $query->withField('nickname,id,avatar,username');
             },
             'forum' => function ($query) {
                 return $query->withField('id,name');
             },
-            'praise','collect'
+            'praise', 'collect'
         ])->order('all_top', 'DESC')->select();
         if ($id) {
             $top_list = $m_thread
                 ->where(['top' => ['>', 0], 'all_top' => 0])
                 ->with([
-                    'user' => function ($query) {
+                    'user'  => function ($query) {
                         return $query->withField('nickname,id,avatar,username');
                     },
                     'forum' => function ($query) {
                         return $query->withField('id,name');
                     },
-                    'praise','collect'
+                    'praise', 'collect'
                 ])->order('top', 'DESC')->select();
         }
 
@@ -66,23 +66,24 @@ class Index extends Base
         }
 
         $list = $m_thread->where($where)->with([
-            'user' => function ($query) {
+            'user'  => function ($query) {
                 return $query->withField('nickname,id,avatar,username');
             },
             'forum' => function ($query) {
                 return $query->withField('id,name');
             },
-            'praise','collect'
-        ])->order($order)->paginate(self::LIST_ROWS['thread'],'',[
-            'query'=>['id'=>$id,'type'=>$type,'sort_type'=>$sort_type,'keywords'=>$keywords]
+            'praise', 'collect'
+        ])->order($order)->paginate(self::LIST_ROWS['thread'], '', [
+            'query' => ['id' => $id, 'type' => $type, 'sort_type' => $sort_type, 'keywords' => $keywords]
         ]);
-        return $this->fetch('index',[
-            'threads' => array_merge($all_top_list, $top_list, $list->getCollection()->toArray()),
-            'page'=>$list->render(),
-            'menu_forum_id'=>$id,
-            'type'=>$type,
-            'sort_type'=>$sort_type,
-            'keywords'=>$keywords]);
+        return $this->fetch('index', [
+            'threads'       => array_merge($all_top_list, $top_list, $list->getCollection()->toArray()),
+            'page'          => $list->render(),
+            'menu_forum_id' => $id,
+            'type'          => $type,
+            'sort_type'     => $sort_type,
+            'keywords'      => $keywords
+        ]);
     }
 
 }

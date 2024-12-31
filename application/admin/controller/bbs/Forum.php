@@ -23,9 +23,9 @@ class Forum extends Backend
     protected $noNeedRight = ['searchlist'];
 
 
-    public function _initialize()
+    protected function initialize()
     {
-        parent::_initialize();
+        parent::initialize();
         $this->model = new \app\admin\model\bbs\Forum;
         $this->view->assign("statusList", $this->model->getStatusList());
         $this->view->assign("threadStatusList", $this->model->getThreadStatusList());
@@ -55,10 +55,10 @@ class Forum extends Backend
     public function index()
     {
         //设置过滤方法
-        $this->request->filter(['strip_tags', 'trim']);
-        if ($this->request->isAjax()) {
+        request()->filter(['strip_tags', 'trim']);
+        if (request()->isAjax()) {
             //如果发送的来源是Selectpage，则转发到Selectpage
-            if ($this->request->request('keyField')) {
+            if (request()->request('keyField')) {
                 return $this->selectpage();
             }
             list($where, $sort, $order, $offset, $limit) = $this->buildparams();
@@ -69,37 +69,38 @@ class Forum extends Backend
                 ->paginate($limit);
             $rows = $list->getCollection()->toArray();
             $user_ids = [];
-            foreach ($rows as $key=> $value){
-                if($value['mod_user_ids']){
-                    $rows[$key]['mod_user_ids'] = $value['mod_user_ids'] = explode(',',$value['mod_user_ids']);
-                    $user_ids = array_merge($user_ids,$value['mod_user_ids']);
-                }else{
+            foreach ($rows as $key => $value) {
+                if ($value['mod_user_ids']) {
+                    $rows[$key]['mod_user_ids'] = $value['mod_user_ids'] = explode(',', $value['mod_user_ids']);
+                    $user_ids = array_merge($user_ids, $value['mod_user_ids']);
+                } else {
                     $rows[$key]['mod_user_ids'] = [];
                 }
                 $rows[$key]['mod_users_name'] = [];
             }
-            if($user_ids){
-                $users = User::whereIn('id',$user_ids)->column('nickname','id');
-                foreach ($rows as $key=> $value){
-                    foreach ($rows[$key]['mod_user_ids'] as $v){
-                        $rows[$key]['mod_users_name'][]=$users[$v];
+            if ($user_ids) {
+                $users = User::whereIn('id', $user_ids)->column('nickname', 'id');
+                foreach ($rows as $key => $value) {
+                    foreach ($rows[$key]['mod_user_ids'] as $v) {
+                        $rows[$key]['mod_users_name'][] = $users[$v];
                     }
                 }
             }
 
-            $result = array("total" => $list->total(), "rows" => $rows);
+            $result = ["total" => $list->total(), "rows" => $rows];
 
             return json($result);
         }
         return $this->view->fetch();
     }
 
-    public function del($ids = "")
+    public function del()
     {
-        if (!$this->request->isPost()) {
+        $ids = request()->param('ids');
+        if (!request()->isPost()) {
             $this->error(__("Invalid parameters"));
         }
-        $ids = $ids ? $ids : $this->request->post("ids");
+        $ids = $ids ? $ids : request()->post("ids");
         if ($ids) {
             $pk = $this->model->getPk();
             $adminIds = $this->getDataLimitAdminIds();
@@ -113,9 +114,9 @@ class Forum extends Backend
             Db::startTrans();
             try {
                 foreach ($list as $k => $v) {
-                    if(\app\admin\model\bbs\Thread::withTrashed()->where('forum_id',$v->id)->count()){
-                        $no_ids[]=$v->id;
-                    }else{
+                    if (\app\admin\model\bbs\Thread::withTrashed()->where('forum_id', $v->id)->count()) {
+                        $no_ids[] = $v->id;
+                    } else {
                         $count += $v->delete();
                     }
                 }
@@ -127,9 +128,9 @@ class Forum extends Backend
                 Db::rollback();
                 $this->error($e->getMessage());
             }
-            $message ='';
-            if($no_ids){
-                $message = 'id为'.implode('、',$no_ids).'的板块下有主题存在不可删除';
+            $message = '';
+            if ($no_ids) {
+                $message = 'id为'.implode('、', $no_ids).'的板块下有主题存在不可删除';
             }
             if ($count) {
                 $this->success($message);

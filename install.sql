@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS `__PREFIX__bbs_forum`  (
                                  `thread_status` tinyint(1) DEFAULT 0 COMMENT '发帖限制:0=登录会员,1=仅版主,2=禁止发帖',
                                  PRIMARY KEY (`id`) USING BTREE,
                                  INDEX `weigh`(`weigh`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '板块表' ;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '板块表' ;
 
 -- ----------------------------
 -- Table structure for __PREFIX__bbs_thread
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS `__PREFIX__bbs_thread`  (
     INDEX `updatetime`(`updatetime`) USING BTREE,
     INDEX `view_number`(`view_number`) USING BTREE,
     INDEX `post_number`(`post_number`) USING BTREE
-    ) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '主题表' ;
+    ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '主题表' ;
 
 -- ----------------------------
 -- Table structure for __PREFIX__bbs_post
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS `__PREFIX__bbs_post`  (
                                 INDEX `id_path`(`id_path`) USING BTREE,
                                 INDEX `floor`(`floor`) USING BTREE,
                                 INDEX `first_id`(`first_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '帖子表' ;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '帖子表' ;
 
 -- ----------------------------
 -- Table structure for __PREFIX__bbs_praise_post
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS `__PREFIX__bbs_report`  (
                                   INDEX `user_id`(`user_id`) USING BTREE,
                                   INDEX `value_user_id`(`value_user_id`) USING BTREE,
                                   INDEX `value_id`(`value_id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '举报表' ;
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '举报表' ;
 
 
 
